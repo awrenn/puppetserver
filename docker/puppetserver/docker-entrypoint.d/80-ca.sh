@@ -12,7 +12,7 @@ hocon() {
 if [[ "$CA_ENABLED" != "true" ]]; then
   # we are just an ordinary compiler
   echo "turning off CA"
-  cat > /etc/puppetlabs/puppetserver/services.d/ca.cfg <<EOF
+  cat > /etc/puppetlabs/puppetserver/services.d/ca.cfg << EOF
 puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
 puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service/filesystem-watch-service
 EOF
@@ -21,7 +21,6 @@ EOF
   ssl_key=$(puppet config print hostprivkey)
   ssl_ca_cert=$(puppet config print localcacert)
   ssl_crl_path=$(puppet config print hostcrl)
-
 
   cd /etc/puppetlabs/puppetserver/conf.d/
   hocon -f webserver.conf set webserver.ssl-cert $ssl_cert
@@ -32,9 +31,11 @@ EOF
 
   # bootstrap certs for the puppetserver
   if [[ ! -f "$ssl_cert" ]]; then
+    echo -n "Connecting to CA server... "
     while ! ca_running; do
       sleep 1
     done
+    echo "Connected."
 
     puppet ssl bootstrap --server="${CA_HOSTNAME}" --masterport="${CA_MASTERPORT}"
   fi
@@ -50,21 +51,21 @@ else
   # See https://github.com/puppetlabs/puppet-enterprise-modules/blob/kearney/modules/pe_install/manifests/prepare/certificates.pp
 
   if [ ! -d "$SSLDIR" ] || [ ! "$(ls -A "$SSLDIR")" ]; then
-      # Append user-supplied DNS Alt Names
-      if [ -n "$DNS_ALT_NAMES" ]; then
-          current="$(puppet config print --section main dns_alt_names)"
-          # shell parameter expansion to remove trailing comma if there is one
-          updated="${DNS_ALT_NAMES%,}"
-          if [ -n "$current" ]; then updated="$current","$updated"; fi
-          puppet config set --section main dns_alt_names "$updated"
-      fi
+    # Append user-supplied DNS Alt Names
+    if [ -n "$DNS_ALT_NAMES" ]; then
+      current="$(puppet config print --section main dns_alt_names)"
+      # shell parameter expansion to remove trailing comma if there is one
+      updated="${DNS_ALT_NAMES%,}"
+      if [ -n "$current" ]; then updated="$current","$updated"; fi
+      puppet config set --section main dns_alt_names "$updated"
+    fi
 
-      timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
-      ca_name="Puppet Enterprise CA generated on ${HOSTNAME} at $timestamp"
+    timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
+    ca_name="Puppet Enterprise CA generated on ${HOSTNAME} at $timestamp"
 
-      # See puppet.conf file for relevant settings
-      puppetserver ca setup \
-          --ca-name "$ca_name" \
-          --config /etc/puppetlabs/puppet/puppet.conf
+    # See puppet.conf file for relevant settings
+    puppetserver ca setup \
+      --ca-name "$ca_name" \
+      --config /etc/puppetlabs/puppet/puppet.conf
   fi
 fi
